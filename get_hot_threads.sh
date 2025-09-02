@@ -46,7 +46,9 @@ done
 if [[ -n "${DOCUMENT_ID}" ]]; then
     echo "Fetching hot threads for document ${DOCUMENT_ID}"
     RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
-        -d "{\"query\": {\"ids\": {\"values\":[\"$DOCUMENT_ID\"]}}}" \
+        -d "{\"query\": {\"ids\": {\"values\":[\"$DOCUMENT_ID\"]}}, \
+             \"_source\": [\"message\", \"kubernetes.labels.k8s_elastic_co/project-id\", \"@timestamp\", \"elasticsearch.node.name\"] \
+            }" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
 elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" && -n "${END_TIMESTAMP}" ]]; then
@@ -56,7 +58,7 @@ elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" && -n "${END_TIMESTAMP}" ]
                 {\"term\": {\"serverless.project.id\": \"$PROJECT_ID\"}}, \
                 {\"range\": {\"@timestamp\": {\"gte\": \"${START_TIMESTAMP}\", \"lte\": \"${END_TIMESTAMP}\"}}}, \
                 {\"match\": {\"message\": {\"query\": \"(gzip compressed\", \"operator\": \"AND\"}}} \
-            ]}}}" \
+            ]}}, \"_source\": [\"message\", \"kubernetes.labels.k8s_elastic_co/project-id\", \"@timestamp\", \"elasticsearch.node.name\"]}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
 else
@@ -97,7 +99,10 @@ jq -c '.[]' <<< "$HOT_THREADS" | while read -r item; do
                                             ], \
                                 \"must\": {\"query_string\": {\"query\": \"\\\"$prefix\\\"*\"}} \
                                 } \
-                    }, \"size\": \"$limit\"}" \
+                    }, 
+                \"size\": \"$limit\", \
+                \"_source\": [\"message\"] \
+            }" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
     # Filter out the summary line
