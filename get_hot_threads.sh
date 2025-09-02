@@ -107,6 +107,7 @@ jq -c '.[]' <<< "$HOT_THREADS" | while read -r item; do
     # Extract the base64 strings and concatenate them
     BASE64_HD=$(echo $BASE64_HD | jq -r ".[] | .message | match(\".*\\\\[part \\\\d+\\\\]:\\\\s(\\\\S*)\").captures[0].string")
     filename="hotthreads/${project}_${node}_$(echo $ts | sed s/://g)_hot_threads.txt"
+    mkdir -p hotthreads
     echo $BASE64_HD | base64 --decode | gzip --decompress > $filename
     echo "Wrote hot threads to $filename"
     
