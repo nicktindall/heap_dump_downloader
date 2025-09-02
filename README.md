@@ -12,7 +12,7 @@ Required environment variables
 
 The "summary document" is the log line that says... 
 ```
-... (gzip compressed, base64-encoded, and split into 7 parts on preceding log lines; for details see https://www.elastic.co/docs/deploy-manage/monitor/logging-configuration/elasticsearch-deprecation-logs?version=current)`)
+... (gzip compressed, base64-encoded, and split into 7 parts on preceding log lines; for details see https://www.elastic.co/docs/deploy-manage/monitor/logging-configuration/elasticsearch-deprecation-logs?version=current)
 ```
 Example:
 ```
