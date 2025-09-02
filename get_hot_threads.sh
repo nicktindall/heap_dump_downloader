@@ -8,9 +8,9 @@ fi
 # PROD ES_URL=https://overview.elastic-cloud.com
 
 # example QA by document: 
-#    ./get_heap_dump.sh -d Uwkt-ZgBzqlaqEDesf7A
+#    ./get_hot_threads.sh -d Uwkt-ZgBzqlaqEDesf7A
 # example QA project and time range: 
-#    ./get_heap_dump.sh -s '2025-09-01T07:10:00.000Z' -e '2025-09-01T07:31:58.172Z' -p 'c75b948caa2e460ca8162a0ccbf0f853'
+#    ./get_hot_threads.sh -s '2025-09-01T07:10:00.000Z' -e '2025-09-01T07:31:58.172Z' -p 'c75b948caa2e460ca8162a0ccbf0f853'
 
 if [[ -z "${ES_URL}" || -z "${API_KEY}" ]]; then
     echo "Error: Set ES_URL and API_KEY environment variables before running this"
