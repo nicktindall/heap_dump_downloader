@@ -44,13 +44,13 @@ while getopts "s:e:p:d:" opt; do
 done
 
 if [[ -n "${DOCUMENT_ID}" ]]; then
-    echo "Fetching heap dump for document ${DOCUMENT_ID}"
+    echo "Fetching hot threads for document ${DOCUMENT_ID}"
     RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
         -d "{\"query\": {\"ids\": {\"values\":[\"$DOCUMENT_ID\"]}}}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
 elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" && -n "${END_TIMESTAMP}" ]]; then
-    echo "Fetching heap dumps for project ${PROJECT_ID} between ${START_TIMESTAMP} and ${END_TIMESTAMP}"
+    echo "Fetching hot threads for project ${PROJECT_ID} between ${START_TIMESTAMP} and ${END_TIMESTAMP}"
     RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
         -d "{\"query\": {\"bool\": {\"filter\": [ \
                 {\"term\": {\"serverless.project.id\": \"$PROJECT_ID\"}}, \
@@ -72,15 +72,15 @@ else
     echo "Found $COUNT"
 fi
 
-HEAP_DUMPS=$(echo $RESULT | jq "[ .hits.hits.[] | { \
+HOT_THREADS=$(echo $RESULT | jq "[ .hits.hits.[] | { \
                     \"prefix\": ._source.message | split(\" (gzip\")[0], \
                     \"project\": ._source.kubernetes.labels.[\"k8s_elastic_co/project-id\"], \
                     \"node\": ._source.elasticsearch.node.name, \
                     \"ts\": ._source.[\"@timestamp\"], \
                     \"parts\": (._source.message | match(\".*split into (\\\\d+) parts.*\").captures[0].string | tonumber)} ]")
-echo "Found: $HEAP_DUMPS"
+echo "Found: $HOT_THREADS"
 
-jq -c '.[]' <<< "$HEAP_DUMPS" | while read -r item; do
+jq -c '.[]' <<< "$HOT_THREADS" | while read -r item; do
     prefix=$(jq -r '.prefix' <<< "$item")
     project=$(jq -r '.project' <<< "$item")
     node=$(jq -r '.node' <<< "$item")
@@ -106,8 +106,8 @@ jq -c '.[]' <<< "$HEAP_DUMPS" | while read -r item; do
     BASE64_HD=$(echo $BASE64_HD | jq "[ .[] | ._source.message | {\"index\": (. | match(\"\\\\[part (\\\\d+)\\\\]\").captures[0].string | tonumber), \"message\": .} ] | sort_by(.index)")
     # Extract the base64 strings and concatenate them
     BASE64_HD=$(echo $BASE64_HD | jq -r ".[] | .message | match(\".*\\\\[part \\\\d+\\\\]:\\\\s(\\\\S*)\").captures[0].string")
-    filename="heapdumps/${project}_${node}_$(echo $ts | sed s/://g)_heap_dump.txt"
+    filename="hotthreads/${project}_${node}_$(echo $ts | sed s/://g)_hot_threads.txt"
     echo $BASE64_HD | base64 --decode | gzip --decompress > $filename
-    echo "Wrote heap dump to $filename"
+    echo "Wrote hot threads to $filename"
     
 done
