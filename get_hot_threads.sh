@@ -1,29 +1,19 @@
 set -e
 
-if [ -e env.sh ]; then
-    source env.sh
-fi
-
-# QA ES_URL=https://overview.es.eu-west-1.aws.qa.cld.elstc.co
-# PROD ES_URL=https://overview.elastic-cloud.com
-
 # example QA by document: 
-#    ./get_hot_threads.sh -d Uwkt-ZgBzqlaqEDesf7A
+#    ./get_hot_threads.sh -n qa e-d Uwkt-ZgBzqlaqEDesf7A
 # example QA project and time range: 
-#    ./get_hot_threads.sh -s '2025-09-01T07:10:00.000Z' -e '2025-09-01T07:31:58.172Z' -p 'c75b948caa2e460ca8162a0ccbf0f853'
-
-if [[ -z "${ES_URL}" || -z "${API_KEY}" ]]; then
-    echo "Error: Set ES_URL and API_KEY environment variables before running this"
-    exit 1
-fi
+#    ./get_hot_threads.sh -n qa -s '2025-09-01T07:10:00.000Z' -e '2025-09-01T07:31:58.172Z' -p 'c75b948caa2e460ca8162a0ccbf0f853'
 
 usage() {
-    echo "Usage: $0 [-s START_TIMESTAMP -e END_TIMESTAMP -p PROJECT_ID]"
-    echo "Or: $0 [-d DOCUMENT_ID]"
+    echo "Usage: $0 [-n (qa|prod)] [-s START_TIMESTAMP -e END_TIMESTAMP -p PROJECT_ID]"
+    echo "Or: $0 [-n (qa|prod)] [-d DOCUMENT_ID]"
     exit 1
 }
 
-while getopts "s:e:p:d:" opt; do
+# Default env to prod
+ENV="prod"
+while getopts "n:s:e:p:d:" opt; do
     case "${opt}" in
         s)
             START_TIMESTAMP="${OPTARG}"
@@ -37,12 +27,33 @@ while getopts "s:e:p:d:" opt; do
         d)
             DOCUMENT_ID="${OPTARG}"
             ;;
+        n)
+            if [[ "${OPTARG}" == "qa" || "${OPTARG}" == "prod" ]]; then
+                ENV="${OPTARG}"
+            else
+                usage
+            fi
+            ;;
         \?) # Unrecognized option
             usage
             ;;
     esac
 done
 
+# Get the API key
+API_KEY=$(security find-generic-password -a $USER -s "hot_threads_downloader_api_key_$ENV" -w)
+
+echo "Using API_KEY=$API_KEY"
+
+# Set the endpoint for the environment
+if [[ $ENV == "prod" ]]; then
+    # TODO: not sure if this is right, or how to create API keys here
+    ES_URL=https://overview-elastic-cloud-com.es.us-east-1.aws.found.io
+elif [[ $ENV == "qa" ]]; then
+    ES_URL=https://overview.es.eu-west-1.aws.qa.cld.elstc.co
+fi
+
+# Fetch the summary line(s)
 if [[ -n "${DOCUMENT_ID}" ]]; then
     echo "Fetching hot threads for document ${DOCUMENT_ID}"
     RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
@@ -66,7 +77,6 @@ else
 fi
 
 COUNT=$(echo $RESULT | jq ".hits.total.value")
-
 if [ "$COUNT" -eq "0" ]; then
     echo "No results found"
     exit 1
@@ -74,6 +84,7 @@ else
     echo "Found $COUNT"
 fi
 
+# Pull out relevant info
 HOT_THREADS=$(echo $RESULT | jq "[ .hits.hits.[] | { \
                     \"prefix\": ._source.message | split(\" (gzip\")[0], \
                     \"project\": ._source.kubernetes.labels.[\"k8s_elastic_co/project-id\"], \
@@ -82,6 +93,7 @@ HOT_THREADS=$(echo $RESULT | jq "[ .hits.hits.[] | { \
                     \"parts\": (._source.message | match(\".*split into (\\\\d+) parts.*\").captures[0].string | tonumber)} ]")
 echo "Found: $HOT_THREADS"
 
+# Fetch each hot threads
 jq -c '.[]' <<< "$HOT_THREADS" | while read -r item; do
     prefix=$(jq -r '.prefix' <<< "$item")
     project=$(jq -r '.project' <<< "$item")

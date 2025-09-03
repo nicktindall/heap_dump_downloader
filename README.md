@@ -2,11 +2,14 @@
 
 Downloads hot threads from the observability clusters and assembles and decompresses them
 
-Required environment variables
-- `API_KEY`: An API key for the cluster (an ES API key, created with [this endpoint](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-api-key))
-- `ES_URL`: The URL for the cluster you're targeting
-
 ## Usage
+
+### You need to store your API keys in the keychain first
+```
+./add_api_key.sh (prod|qa)
+```
+
+Will prompt you for the API key to add and write it to the keychain, this will be used by the tool subsequently
 
 ### Get the hot threads for the summary document with the specified ID.
 
@@ -25,6 +28,12 @@ Example:
 
 ```
 ./get_hot_threads.sh -s {start-timestamp} -e {end-timestamp} -p {project-id}
+```
+
+### Other options
+
+```
+    -n (prod|qa)     Specify the environment to connect to, defaults to prod
 ```
 
 timestamps are anything that will fit into [a `range` query's `gte` and `lte` fields](https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-range-query#ranges-on-dates). e.g. ISO strings (e.g. `2025-09-01T07:10:00.000Z`)
