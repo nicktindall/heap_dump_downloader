@@ -70,7 +70,7 @@ if [[ -n "${DOCUMENT_ID}" ]]; then
         }
 EOF
 )
-    RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
+    RESULT=$(curl --fail-with-body -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
         -d "${QUERY}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
@@ -113,7 +113,7 @@ elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" && -n "${END_TIMESTAMP}" ]
         }
 EOF
 )
-    RESULT=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
+    RESULT=$(curl --fail-with-body -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
         -d "${QUERY}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
@@ -185,7 +185,7 @@ jq -c '.[]' <<< "${HOT_THREADS}" | while read -r item; do
         }
 EOF
 )
-    ONE_DUMP=$(curl -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
+    ONE_DUMP=$(curl --fail-with-body -X POST "${ES_URL}/serverless-logging-*:logs-elasticsearch*/_search?pretty=true" \
         -d "${QUERY}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
