@@ -1,6 +1,3 @@
 # This is output
 # Ignore hot threads output directory
 hotthreads/
-
-# Ignore environment configuration file
-env.sh
