@@ -6,8 +6,9 @@ set -e
 #    ./get_hot_threads.sh -n qa -s '2025-09-01T07:10:00.000Z' -e '2025-09-01T07:31:58.172Z' -p 'c75b948caa2e460ca8162a0ccbf0f853'
 
 usage() {
-    echo "Usage: $0 [-n (qa|prod)] [-s START_TIMESTAMP -e END_TIMESTAMP -p PROJECT_ID]"
+    echo "Usage: $0 [-n (qa|prod)] [-s START_TIMESTAMP [-e END_TIMESTAMP] -p PROJECT_ID]"
     echo "Or: $0 [-n (qa|prod)] [-d DOCUMENT_ID]"
+    echo "Note: If -e END_TIMESTAMP is not provided, it defaults to START_TIMESTAMP + 1 minute"
     exit 1
 }
 
@@ -74,7 +75,36 @@ EOF
         -d "${QUERY}" \
         -H "Authorization: ApiKey ${API_KEY}" \
         -H "Content-Type: application/json")
-elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" && -n "${END_TIMESTAMP}" ]]; then
+elif [[ -n "${PROJECT_ID}" && -n "${START_TIMESTAMP}" ]]; then
+    # If END_TIMESTAMP is not provided, calculate it as START_TIMESTAMP + 1 minute
+    if [[ -z "${END_TIMESTAMP}" ]]; then
+        # Remove milliseconds and Z, parse as standard format, add 60s, then reformat
+        clean_timestamp=$(echo "${START_TIMESTAMP}" | sed 's/\.[0-9]*Z$//' | sed 's/Z$//')
+        
+        # Detect if we're using BSD date (macOS) or GNU date (Linux)
+        if date -j >/dev/null 2>&1; then
+            # BSD date (macOS)
+            epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${clean_timestamp}" "+%s" 2>/dev/null)
+            if [[ $? -eq 0 ]]; then
+                end_epoch=$((epoch + 60))
+                END_TIMESTAMP=$(date -j -f "%s" "${end_epoch}" "+%Y-%m-%dT%H:%M:%S.000Z")
+            else
+                echo "Error: Could not parse START_TIMESTAMP format. Expected ISO 8601 format like 2025-09-01T07:10:00.000Z"
+                exit 1
+            fi
+        else
+            # GNU date (Linux)
+            epoch=$(date -d "${clean_timestamp}" "+%s" 2>/dev/null)
+            if [[ $? -eq 0 ]]; then
+                end_epoch=$((epoch + 60))
+                END_TIMESTAMP=$(date -d "@${end_epoch}" "+%Y-%m-%dT%H:%M:%S.000Z")
+            else
+                echo "Error: Could not parse START_TIMESTAMP format. Expected ISO 8601 format like 2025-09-01T07:10:00.000Z"
+                exit 1
+            fi
+        fi
+        echo "Auto-calculated end timestamp: ${END_TIMESTAMP}"
+    fi
     echo "Fetching hot threads for project ${PROJECT_ID} between ${START_TIMESTAMP} and ${END_TIMESTAMP}"
     QUERY=$(cat <<EOF
         {
